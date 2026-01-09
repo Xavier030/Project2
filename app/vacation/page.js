@@ -9,102 +9,10 @@ import "../../app/globals.css";
 export default function Vacation() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [filteredPrice, setFilteredPrice] = useState([0, 2000]);
+  const [selectedStatus, setSelectedStatus] = useState("all"); // 新增状态筛选
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // 从 API 获取数据
-  useEffect(() => {
-    async function fetchPackages() {
-      try {
-        setLoading(true);
-        console.log("Fetching from:", window.location.origin + "/api/packages");
-
-        const response = await fetch("/api/packages");
-        console.log("Response status:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log("API response:", result);
-
-        // transfer database
-        const formattedPackages = result.data.map((pkg, index) => {
-          const images = [
-            "/images/view1.avif",
-            "/images/view2.avif",
-            "/images/view3.avif",
-            "/images/view4.avif",
-            "/images/view5.avif",
-            "/images/view6.avif",
-          ];
-
-          return {
-            id: pkg.PackageId || index + 1,
-            image: images[index % images.length] || "/images/default.jpg",
-            title: pkg.PkgName || "Unnamed Package",
-            description: pkg.PkgDesc || "No description available",
-            price: parseFloat(pkg.PkgBasePrice) || 0,
-            duration: `${
-              pkg.PkgEndDate && pkg.PkgStartDate
-                ? calculateDuration(pkg.PkgStartDate, pkg.PkgEndDate)
-                : "Flexible"
-            }`,
-            category: mapCategory(pkg.PkgName || ""),
-            rating: 4.5 + Math.random() * 0.5,
-            features: [
-              pkg.PkgDesc ? `${pkg.PkgDesc.split(".")[0]}` : "Accommodation",
-              "Daily Meals Included",
-              "Guided Tours",
-              pkg.PkgEndDate
-                ? `Valid until ${formatDate(pkg.PkgEndDate)}`
-                : "Flexible Dates",
-            ],
-            tag: getPackageTag(
-              pkg.PkgName || "",
-              parseFloat(pkg.PkgBasePrice) || 0
-            ),
-            discount: calculateDiscount(
-              pkg.PkgStartDate,
-              pkg.PkgEndDate,
-              parseFloat(pkg.PkgBasePrice) || 0
-            ),
-            dbData: pkg,
-          };
-        });
-
-        setPackages(formattedPackages);
-        setError(null);
-      } catch (err) {
-        console.error("Detailed error:", err);
-        setError(`Error: ${err.message}`);
-        setPackages(getDefaultPackages());
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchPackages();
-  }, []);
-
-  //
-  function calculateDuration(startDate, endDate) {
-    if (!startDate || !endDate) return "Flexible";
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) return "1 Day";
-    if (diffDays === 2) return "2 Days 1 Night";
-    if (diffDays === 3) return "3 Days 2 Nights";
-    if (diffDays === 4) return "4 Days 3 Nights";
-    if (diffDays === 5) return "5 Days 4 Nights";
-    if (diffDays === 6) return "6 Days 5 Nights";
-    return `${diffDays} Days`;
-  }
 
   // 辅助函数：映射类别
   function mapCategory(pkgName) {
@@ -143,51 +51,170 @@ export default function Vacation() {
     return "nature"; // 默认类别
   }
 
-  // 辅助函数：获取标签
-  function getPackageTag(pkgName, price) {
-    if (price > 1500) return "LUXURY";
-    if (price < 800) return "BUDGET";
+  // 从 API 获取数据
+  useEffect(() => {
+    async function fetchPackages() {
+      try {
+        setLoading(true);
+        console.log("Fetching from:", window.location.origin + "/api/packages");
 
-    const name = pkgName.toLowerCase();
-    if (name.includes("new") || name.includes("latest")) return "NEW";
-    if (name.includes("popular") || name.includes("bestseller"))
-      return "POPULAR";
-    if (name.includes("adventure") || name.includes("extreme"))
-      return "ADVENTURE";
+        const response = await fetch("/api/packages");
+        console.log("Response status:", response.status);
 
-    return "FEATURED";
-  }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-  // 辅助函数：计算折扣
-  function calculateDiscount(startDate, endDate, price) {
-    if (!startDate || !endDate) return 0;
+        const result = await response.json();
+        console.log("API response:", result);
 
-    const start = new Date(startDate);
-    const now = new Date();
-    const timeUntilStart = start - now;
-    const daysUntilStart = timeUntilStart / (1000 * 60 * 60 * 24);
+        // 替换为新的格式化逻辑
+        const formattedPackages = result.data.map((pkg, index) => {
+          const now = new Date();
+          const endDate = new Date(pkg.PkgEndDate);
+          const startDate = pkg.PkgStartDate
+            ? new Date(pkg.PkgStartDate)
+            : null;
 
-    // 如果行程即将开始（30天内），提供折扣
-    if (daysUntilStart > 0 && daysUntilStart < 30) {
-      return Math.min(25, Math.floor(daysUntilStart / 2));
+          // 判断是否已过期
+          const isExpired = endDate < now;
+          // 判断是否可预订（结束日期在未来）
+          const isAvailable = endDate > now;
+
+          const images = [
+            "/images/view1.avif",
+            "/images/view2.avif",
+            "/images/view3.avif",
+            "/images/view4.avif",
+            "/images/view5.avif",
+            "/images/view6.avif",
+          ];
+
+          // 根据数据库价格计算实际价格（处理逗号格式）
+          let price = 0;
+          try {
+            if (pkg.PkgBasePrice) {
+              // 处理 "4500,000" 这种格式
+              const priceStr = pkg.PkgBasePrice.toString();
+              price = parseFloat(priceStr.replace(",", "."));
+              // 如果转换失败，尝试直接解析
+              if (isNaN(price)) {
+                price = parseFloat(priceStr.replace(",", ""));
+              }
+            }
+          } catch (e) {
+            console.error("价格转换错误:", e);
+            price = 1000 + index * 200; // 默认价格
+          }
+
+          // 计算实际时长
+          let duration = "Flexible";
+          if (startDate && pkg.PkgEndDate) {
+            const diffTime = Math.abs(endDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays === 1) duration = "1 Day";
+            else if (diffDays === 2) duration = "2 Days 1 Night";
+            else if (diffDays === 3) duration = "3 Days 2 Nights";
+            else if (diffDays === 4) duration = "4 Days 3 Nights";
+            else if (diffDays === 5) duration = "5 Days 4 Nights";
+            else if (diffDays === 6) duration = "6 Days 5 Nights";
+            else duration = `${diffDays} Days`;
+          }
+
+          // 根据状态设置标签和折扣
+          let tag = "FEATURED";
+          let discount = 0;
+
+          if (isExpired) {
+            tag = "EXPIRED";
+            discount = 0;
+          } else if (isAvailable) {
+            // 如果是可预订的，根据价格和名称设置标签
+            if (price > 2000) tag = "LUXURY";
+            else if (price < 1000) tag = "BUDGET";
+            else if (pkg.PkgName && pkg.PkgName.toLowerCase().includes("new"))
+              tag = "NEW";
+            else if (
+              pkg.PkgName &&
+              pkg.PkgName.toLowerCase().includes("popular")
+            )
+              tag = "POPULAR";
+
+            // 设置折扣（即将开始的行程折扣更大）
+            if (startDate) {
+              const daysUntilStart = Math.ceil(
+                (startDate - now) / (1000 * 60 * 60 * 24)
+              );
+              if (daysUntilStart > 0 && daysUntilStart < 30) {
+                discount = Math.min(25, 30 - daysUntilStart);
+              } else if (price > 1500) {
+                discount = 15;
+              } else if (price > 800) {
+                discount = 10;
+              }
+            }
+          }
+
+          // 构建特征列表
+          const features = [];
+          if (pkg.PkgDesc) {
+            const firstSentence = pkg.PkgDesc.split(".")[0];
+            if (firstSentence) features.push(firstSentence);
+          }
+          features.push("Daily Meals Included");
+          features.push("Guided Tours");
+
+          if (isExpired) {
+            features.push(
+              `Ended on ${endDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}`
+            );
+          } else if (isAvailable) {
+            features.push(
+              `Valid until ${endDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}`
+            );
+          } else {
+            features.push("Flexible Dates");
+          }
+
+          return {
+            id: pkg.PackageId || index + 1,
+            image: images[index % images.length] || "/images/default.jpg",
+            title: pkg.PkgName || "Unnamed Package",
+            description: pkg.PkgDesc || "No description available",
+            price: price,
+            duration: duration,
+            category: mapCategory(pkg.PkgName || ""),
+            rating: 4.5 + Math.random() * 0.5,
+            features: features,
+            tag: tag,
+            discount: discount,
+            dbData: pkg,
+            isExpired: isExpired,
+            isAvailable: isAvailable,
+          };
+        });
+
+        setPackages(formattedPackages);
+        setError(null);
+      } catch (err) {
+        console.error("Detailed error:", err);
+        setError(`Error: ${err.message}`);
+        setPackages(getDefaultPackages());
+      } finally {
+        setLoading(false);
+      }
     }
+    fetchPackages();
+  }, []);
 
-    // 高价包提供标准折扣
-    if (price > 1000) return 15;
-    if (price > 500) return 10;
-
-    return 0;
-  }
-
-  // 辅助函数：格式化日期
-  function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
   function getDefaultPackages() {
     return [
       {
@@ -208,6 +235,8 @@ export default function Vacation() {
         ],
         tag: "BEST SELLER",
         discount: 15,
+        isExpired: false,
+        isAvailable: true,
       },
       {
         id: 2,
@@ -227,6 +256,8 @@ export default function Vacation() {
         ],
         tag: "POPULAR",
         discount: 10,
+        isExpired: false,
+        isAvailable: true,
       },
       {
         id: 3,
@@ -246,63 +277,8 @@ export default function Vacation() {
         ],
         tag: "LUXURY",
         discount: 20,
-      },
-      {
-        id: 4,
-        image: "/images/view2.avif",
-        title: "Cultural City Tour",
-        description:
-          "Immerse yourself in rich cultural heritage, historical landmarks, and vibrant city life. Perfect for urban explorers.",
-        price: 749,
-        duration: "4 Days 3 Nights",
-        category: "city",
-        rating: 4.6,
-        features: [
-          "City Tour Guide",
-          "Museum Entries",
-          "Local Cuisine Tasting",
-          "Transportation Included",
-        ],
-        tag: "NEW",
-        discount: 0,
-      },
-      {
-        id: 5,
-        image: "/images/view5.avif",
-        title: "Desert Safari Adventure",
-        description:
-          "Experience the magic of golden deserts with thrilling dune bashing, camel rides, and traditional Bedouin experiences.",
-        price: 999,
-        duration: "3 Days 2 Nights",
-        category: "adventure",
-        rating: 4.5,
-        features: [
-          "Desert Camp Stay",
-          "Camel Safari",
-          "Traditional Dinner",
-          "Stargazing Session",
-        ],
-        tag: "ADVENTURE",
-        discount: 12,
-      },
-      {
-        id: 6,
-        image: "/images/view6.avif",
-        title: "Romantic Island Retreat",
-        description:
-          "Perfect honeymoon or romantic getaway with private beaches, candlelit dinners, and luxury spa treatments.",
-        price: 1899,
-        duration: "6 Days 5 Nights",
-        category: "luxury",
-        rating: 4.9,
-        features: [
-          "Private Villa",
-          "Couple Spa Package",
-          "Romantic Dinner Setup",
-          "Island Hopping Tour",
-        ],
-        tag: "ROMANTIC",
-        discount: 25,
+        isExpired: false,
+        isAvailable: true,
       },
     ];
   }
@@ -341,9 +317,14 @@ export default function Vacation() {
     },
   ];
 
+  // 修改过滤逻辑
   const filteredPackages = packages.filter((pkg) => {
     if (selectedCategory !== "all" && pkg.category !== selectedCategory) {
       return false;
+    }
+    if (selectedStatus !== "all") {
+      if (selectedStatus === "available" && !pkg.isAvailable) return false;
+      if (selectedStatus === "expired" && !pkg.isExpired) return false;
     }
     if (pkg.price < filteredPrice[0] || pkg.price > filteredPrice[1]) {
       return false;
@@ -457,6 +438,45 @@ export default function Vacation() {
                       </div>
                     </div>
 
+                    {/* Status Filter */}
+                    <div className="mb-4">
+                      <h6 className="fw-semibold mb-3">Status</h6>
+                      <div className="d-flex flex-wrap gap-2">
+                        {[
+                          {
+                            id: "all",
+                            name: "All",
+                            icon: "🌍",
+                            color: "outline-secondary",
+                          },
+                          {
+                            id: "available",
+                            name: "Available",
+                            icon: "✅",
+                            color: "outline-success",
+                          },
+                          {
+                            id: "expired",
+                            name: "Expired",
+                            icon: "⏰",
+                            color: "outline-secondary",
+                          },
+                        ].map((status) => (
+                          <button
+                            key={status.id}
+                            className={`btn btn-sm btn-${
+                              status.color
+                            } d-flex align-items-center gap-1 ${
+                              selectedStatus === status.id ? "active" : ""
+                            }`}
+                            onClick={() => setSelectedStatus(status.id)}
+                          >
+                            {status.icon} {status.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Price Range */}
                     <div className="mb-4">
                       <h6 className="fw-semibold mb-3">
@@ -466,7 +486,7 @@ export default function Vacation() {
                         type="range"
                         className="form-range"
                         min="0"
-                        max="2000"
+                        max="5000"
                         step="100"
                         value={filteredPrice[0]}
                         onChange={(e) =>
@@ -480,7 +500,7 @@ export default function Vacation() {
                         type="range"
                         className="form-range"
                         min="0"
-                        max="2000"
+                        max="5000"
                         step="100"
                         value={filteredPrice[1]}
                         onChange={(e) =>
@@ -491,7 +511,7 @@ export default function Vacation() {
                         }
                       />
                       <div className="small text-muted mt-2">
-                        Max price in database: $
+                        Max price: $
                         {Math.max(...packages.map((p) => p.price || 0))}
                       </div>
                     </div>
@@ -505,6 +525,13 @@ export default function Vacation() {
                       <div className="small">
                         <div>Total Packages: {packages.length}</div>
                         <div>
+                          Available:{" "}
+                          {packages.filter((p) => p.isAvailable).length}
+                        </div>
+                        <div>
+                          Expired: {packages.filter((p) => p.isExpired).length}
+                        </div>
+                        <div>
                           Average Price: $
                           {Math.round(
                             packages.reduce(
@@ -512,10 +539,6 @@ export default function Vacation() {
                               0
                             ) / packages.length
                           ) || 0}
-                        </div>
-                        <div>
-                          Categories:{" "}
-                          {new Set(packages.map((p) => p.category)).size}
                         </div>
                       </div>
                     </div>
@@ -567,15 +590,25 @@ export default function Vacation() {
 
                             {/* Tags */}
                             <div className="position-absolute top-0 start-0 p-3">
-                              {pkg.tag && (
+                              {pkg.isExpired ? (
+                                <span className="badge bg-secondary text-white fw-medium px-3 py-2">
+                                  <i className="bi bi-clock-history me-1"></i>
+                                  EXPIRED
+                                </span>
+                              ) : pkg.isAvailable ? (
+                                <span className="badge bg-success text-white fw-medium px-3 py-2">
+                                  <i className="bi bi-check-circle me-1"></i>
+                                  AVAILABLE
+                                </span>
+                              ) : pkg.tag ? (
                                 <span className="badge bg-white text-dark fw-medium px-3 py-2">
                                   {pkg.tag}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
 
                             {/* Discount Badge */}
-                            {pkg.discount > 0 && (
+                            {pkg.discount > 0 && !pkg.isExpired && (
                               <div className="position-absolute top-0 end-0 p-3">
                                 <span className="badge bg-danger px-3 py-2">
                                   Save {pkg.discount}%
@@ -609,10 +642,30 @@ export default function Vacation() {
 
                             {/* Database Info */}
                             {pkg.dbData && (
-                              <div className="mb-2 small text-info">
-                                <i className="bi bi-database me-1"></i>
-                                Database ID: {pkg.dbData.PackageId}
-                              </div>
+                              <>
+                                <div className="mb-2 small text-info">
+                                  <i className="bi bi-database me-1"></i>
+                                  Database ID: {pkg.dbData.PackageId}
+                                </div>
+                                {pkg.isExpired && (
+                                  <div className="mb-2 small text-danger">
+                                    <i className="bi bi-calendar-x me-1"></i>
+                                    Ended on:{" "}
+                                    {new Date(
+                                      pkg.dbData.PkgEndDate
+                                    ).toLocaleDateString()}
+                                  </div>
+                                )}
+                                {!pkg.isExpired && pkg.dbData.PkgEndDate && (
+                                  <div className="mb-2 small text-success">
+                                    <i className="bi bi-calendar-check me-1"></i>
+                                    Valid until:{" "}
+                                    {new Date(
+                                      pkg.dbData.PkgEndDate
+                                    ).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             {/* Features */}
@@ -634,7 +687,17 @@ export default function Vacation() {
                             <div className="d-flex justify-content-between align-items-center pt-3 border-top">
                               <div>
                                 <div className="d-flex align-items-baseline">
-                                  {pkg.discount > 0 ? (
+                                  {pkg.isExpired ? (
+                                    <div>
+                                      <h4 className="fw-bold text-secondary mb-0">
+                                        ${pkg.price}
+                                      </h4>
+                                      <small className="text-danger">
+                                        <i className="bi bi-exclamation-triangle me-1"></i>
+                                        Package has ended
+                                      </small>
+                                    </div>
+                                  ) : pkg.discount > 0 ? (
                                     <>
                                       <h4 className="fw-bold text-primary mb-0">
                                         $
@@ -656,9 +719,25 @@ export default function Vacation() {
                                   </small>
                                 </div>
                               </div>
-                              <button className="btn btn-gradient px-4">
-                                <i className="bi bi-arrow-right me-2"></i>
-                                Book Now
+                              <button
+                                className={`btn px-4 ${
+                                  pkg.isExpired
+                                    ? "btn-secondary disabled"
+                                    : "btn-gradient"
+                                }`}
+                                disabled={pkg.isExpired}
+                              >
+                                {pkg.isExpired ? (
+                                  <>
+                                    <i className="bi bi-x-circle me-2"></i>
+                                    Ended
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="bi bi-arrow-right me-2"></i>
+                                    Book Now
+                                  </>
+                                )}
                               </button>
                             </div>
                           </div>
@@ -677,7 +756,8 @@ export default function Vacation() {
                       className="btn btn-outline-primary"
                       onClick={() => {
                         setSelectedCategory("all");
-                        setFilteredPrice([0, 2000]);
+                        setSelectedStatus("all");
+                        setFilteredPrice([0, 5000]);
                       }}
                     >
                       Reset Filters
@@ -720,7 +800,6 @@ export default function Vacation() {
       <Footer />
 
       <style jsx>{`
-        /* 样式保持不变 */
         .vacation-hero {
           min-height: 70vh;
           background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5)),
@@ -784,14 +863,6 @@ export default function Vacation() {
         .btn-gradient:hover {
           transform: translateY(-2px);
           box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .icon-wrapper {
-          transition: transform 0.3s ease;
-        }
-
-        .icon-wrapper:hover {
-          transform: scale(1.1);
         }
 
         @media (max-width: 768px) {
