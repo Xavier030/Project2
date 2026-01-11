@@ -65,8 +65,18 @@ export default function Navbar() {
             </svg>
           </div>
           <div className="d-flex flex-column">
-            <span className="fw-bold fs-4 text-dark">World Travel</span>
-            <span className="text-muted fs-6 fw-light">
+            <span
+              className={`fw-bold fs-4 ${
+                scrolled ? "text-dark" : "text-white"
+              }`}
+            >
+              World Travel
+            </span>
+            <span
+              className={`fs-6 fw-light ${
+                scrolled ? "text-muted" : "text-white/80"
+              }`}
+            >
               Explore Beyond Limits
             </span>
           </div>
@@ -96,7 +106,11 @@ export default function Navbar() {
                 href={item.href}
                 className="nav-item position-relative mx-2"
               >
-                <span className="nav-link fw-medium px-3 py-2 rounded-pill hover-effect">
+                <span
+                  className={`nav-link fw-medium px-3 py-2 rounded-pill hover-effect ${
+                    scrolled ? "text-dark" : "text-white"
+                  }`}
+                >
                   {item.label}
                   {item.label === "Login" && (
                     <span className="login-badge"></span>
@@ -138,7 +152,9 @@ export default function Navbar() {
           position: absolute;
           height: 3px;
           width: 100%;
-          background: linear-gradient(135deg, #667eea, #764ba2);
+          background: ${scrolled
+            ? "linear-gradient(135deg, #667eea, #764ba2)"
+            : "white"};
           border-radius: 3px;
           opacity: 1;
           left: 0;
@@ -174,14 +190,14 @@ export default function Navbar() {
         }
 
         .nav-link {
-          color: #4a5568 !important;
           transition: all 0.3s ease;
           position: relative;
           z-index: 1;
         }
 
         .nav-link:hover {
-          color: #2d3748 !important;
+          color: ${scrolled ? "#2d3748" : "white"} !important;
+          opacity: 0.9;
         }
 
         .nav-link::before {
@@ -225,6 +241,7 @@ export default function Navbar() {
           border: none;
           position: relative;
           overflow: hidden;
+          transition: all 0.3s ease;
         }
 
         .btn-gradient::before {
@@ -254,7 +271,8 @@ export default function Navbar() {
 
         @media (max-width: 992px) {
           .navbar-collapse {
-            background: white;
+            background: ${scrolled ? "white" : "rgba(255, 255, 255, 0.95)"};
+            backdrop-filter: blur(10px);
             padding: 1rem;
             border-radius: 1rem;
             margin-top: 1rem;
@@ -263,6 +281,29 @@ export default function Navbar() {
 
           .nav-item {
             margin: 0.5rem 0;
+          }
+
+          .nav-link {
+            color: ${scrolled ? "#4a5568" : "white"} !important;
+            display: block;
+            text-align: center;
+          }
+
+          .btn-gradient {
+            display: block;
+            margin: 0.5rem auto;
+            width: 100%;
+            max-width: 200px;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .navbar-brand {
+            flex-direction: row;
+          }
+
+          .navbar-brand .d-flex {
+            margin-left: 10px;
           }
         }
       `}</style>

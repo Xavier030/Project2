@@ -5,16 +5,83 @@ import Head from "next/head";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import "../../app/globals.css";
+import "./package.css";
 
 export default function Vacation() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [filteredPrice, setFilteredPrice] = useState([0, 2000]);
-  const [selectedStatus, setSelectedStatus] = useState("all"); // 新增状态筛选
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 辅助函数：映射类别
+  // Enhanced function to generate reliable image URLs
+  function getRandomImageUrl(index) {
+    // More reliable image services with better fallback system
+    const imageServices = [
+      // Primary: Picsum with cache busting
+      () => `https://picsum.photos/seed/${Date.now() + index}/400/300`,
+      // Secondary: Picsum with ID-based seeding
+      () => `https://picsum.photos/id/${(index % 100) + 10}/400/300`,
+      // Third: Unsplash with specific categories
+      () => {
+        const categories = [
+          "travel",
+          "vacation",
+          "landscape",
+          "nature",
+          "adventure",
+        ];
+        const category = categories[index % categories.length];
+        return `https://source.unsplash.com/400x300/?${category},tourism`;
+      },
+      // Fourth: Placeholder.com (always works)
+      () =>
+        `https://via.placeholder.com/400x300/667eea/ffffff?text=Travel+Package+${
+          index + 1
+        }`,
+      // Fifth: Images from a more stable service
+      () =>
+        `https://images.unsplash.com/photo-${
+          1500000000000 + index * 1000
+        }?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&h=300&q=80`,
+    ];
+
+    // Use different services for different packages to avoid rate limiting
+    const serviceIndex = index % imageServices.length;
+
+    // Add cache busting parameter
+    const url = imageServices[serviceIndex]();
+    return url.includes("?")
+      ? `${url}&t=${Date.now()}`
+      : `${url}?t=${Date.now()}`;
+  }
+
+  // More robust fallback image function
+  function getPlaceholderImageUrl(index, category) {
+    const categoryMap = {
+      nature: "forest,nature,green",
+      adventure: "mountain,adventure,hiking",
+      beach: "beach,ocean,sea",
+      city: "city,urban,architecture",
+      luxury: "luxury,resort,hotel",
+    };
+
+    const keywords = categoryMap[category] || "travel,vacation";
+
+    // Use more reliable placeholder services
+    const placeholderOptions = [
+      `https://via.placeholder.com/400x300/764ba2/ffffff?text=${encodeURIComponent(
+        category.toUpperCase()
+      )}`,
+      `https://picsum.photos/seed/${category}${index}/400/300`,
+      `https://source.unsplash.com/400x300/?${keywords}&sig=${index}`,
+    ];
+
+    return placeholderOptions[index % placeholderOptions.length];
+  }
+
+  // Maps package name to category based on keywords
   function mapCategory(pkgName) {
     const name = pkgName.toLowerCase();
     if (
@@ -48,10 +115,37 @@ export default function Vacation() {
     )
       return "luxury";
     if (name.includes("desert") || name.includes("safari")) return "adventure";
-    return "nature"; // 默认类别
+    return "nature";
   }
 
-  // 从 API 获取数据
+  // Enhanced image error handler with multiple fallbacks
+  const handleImageError = (e, pkg) => {
+    console.warn(
+      `Image failed to load for "${pkg.title}", trying fallbacks...`
+    );
+
+    const fallbacks = [
+      pkg.fallbackImage,
+      getPlaceholderImageUrl(pkg.id, pkg.category),
+      `https://via.placeholder.com/400x300/667eea/ffffff?text=${encodeURIComponent(
+        pkg.category.toUpperCase()
+      )}`,
+      `https://picsum.photos/seed/fallback${pkg.id}/400/300`,
+    ];
+
+    // Try each fallback in sequence
+    const currentSrc = e.target.src;
+    const fallbackIndex = fallbacks.indexOf(currentSrc) + 1;
+
+    if (fallbackIndex < fallbacks.length) {
+      e.target.src = fallbacks[fallbackIndex];
+    } else {
+      console.error(`All image fallbacks failed for "${pkg.title}"`);
+      e.target.src = `https://via.placeholder.com/400x300/cccccc/666666?text=Image+Not+Available`;
+    }
+  };
+
+  // Fetch packages from API
   useEffect(() => {
     async function fetchPackages() {
       try {
@@ -68,7 +162,6 @@ export default function Vacation() {
         const result = await response.json();
         console.log("API response:", result);
 
-        // 替换为新的格式化逻辑
         const formattedPackages = result.data.map((pkg, index) => {
           const now = new Date();
           const endDate = new Date(pkg.PkgEndDate);
@@ -76,38 +169,32 @@ export default function Vacation() {
             ? new Date(pkg.PkgStartDate)
             : null;
 
-          // 判断是否已过期
+          // Check if package is expired
           const isExpired = endDate < now;
-          // 判断是否可预订（结束日期在未来）
+          // Check if package is available for booking
           const isAvailable = endDate > now;
 
-          const images = [
-            "/images/view1.avif",
-            "/images/view2.avif",
-            "/images/view3.avif",
-            "/images/view4.avif",
-            "/images/view5.avif",
-            "/images/view6.avif",
-          ];
+          // Get different random image for each package
+          const imageUrl = getRandomImageUrl(index);
+          const category = mapCategory(pkg.PkgName || "");
+          const fallbackImage = getPlaceholderImageUrl(index, category);
 
-          // 根据数据库价格计算实际价格（处理逗号格式）
+          // Calculate actual price
           let price = 0;
           try {
             if (pkg.PkgBasePrice) {
-              // 处理 "4500,000" 这种格式
               const priceStr = pkg.PkgBasePrice.toString();
               price = parseFloat(priceStr.replace(",", "."));
-              // 如果转换失败，尝试直接解析
               if (isNaN(price)) {
                 price = parseFloat(priceStr.replace(",", ""));
               }
             }
           } catch (e) {
-            console.error("价格转换错误:", e);
-            price = 1000 + index * 200; // 默认价格
+            console.error("Price conversion error:", e);
+            price = 1000 + index * 200; // Default fallback price
           }
 
-          // 计算实际时长
+          // Calculate actual duration
           let duration = "Flexible";
           if (startDate && pkg.PkgEndDate) {
             const diffTime = Math.abs(endDate - startDate);
@@ -121,7 +208,7 @@ export default function Vacation() {
             else duration = `${diffDays} Days`;
           }
 
-          // 根据状态设置标签和折扣
+          // Set tag and discount based on status
           let tag = "FEATURED";
           let discount = 0;
 
@@ -129,7 +216,7 @@ export default function Vacation() {
             tag = "EXPIRED";
             discount = 0;
           } else if (isAvailable) {
-            // 如果是可预订的，根据价格和名称设置标签
+            // Set tag based on price and name for available packages
             if (price > 2000) tag = "LUXURY";
             else if (price < 1000) tag = "BUDGET";
             else if (pkg.PkgName && pkg.PkgName.toLowerCase().includes("new"))
@@ -140,7 +227,7 @@ export default function Vacation() {
             )
               tag = "POPULAR";
 
-            // 设置折扣（即将开始的行程折扣更大）
+            // Set discount (higher discount for upcoming packages)
             if (startDate) {
               const daysUntilStart = Math.ceil(
                 (startDate - now) / (1000 * 60 * 60 * 24)
@@ -155,7 +242,7 @@ export default function Vacation() {
             }
           }
 
-          // 构建特征列表
+          // Build features list
           const features = [];
           if (pkg.PkgDesc) {
             const firstSentence = pkg.PkgDesc.split(".")[0];
@@ -186,12 +273,13 @@ export default function Vacation() {
 
           return {
             id: pkg.PackageId || index + 1,
-            image: images[index % images.length] || "/images/default.jpg",
+            image: imageUrl,
+            fallbackImage: fallbackImage,
             title: pkg.PkgName || "Unnamed Package",
             description: pkg.PkgDesc || "No description available",
             price: price,
             duration: duration,
-            category: mapCategory(pkg.PkgName || ""),
+            category: category,
             rating: 4.5 + Math.random() * 0.5,
             features: features,
             tag: tag,
@@ -215,11 +303,13 @@ export default function Vacation() {
     fetchPackages();
   }, []);
 
+  // Returns default packages if API fails
   function getDefaultPackages() {
-    return [
+    const defaultPackages = [
       {
         id: 1,
-        image: "/images/view4.avif",
+        image: getRandomImageUrl(1),
+        fallbackImage: getPlaceholderImageUrl(1, "nature"),
         title: "Serene Forest Retreat",
         description:
           "Escape to lush green forests where towering trees create a natural canopy.",
@@ -240,7 +330,8 @@ export default function Vacation() {
       },
       {
         id: 2,
-        image: "/images/view1.avif",
+        image: getRandomImageUrl(2),
+        fallbackImage: getPlaceholderImageUrl(2, "adventure"),
         title: "Majestic Mountain Getaway",
         description:
           "Experience breathtaking mountain vistas with crisp air and stunning landscapes. Perfect for adventure seekers.",
@@ -261,7 +352,8 @@ export default function Vacation() {
       },
       {
         id: 3,
-        image: "/images/view3.avif",
+        image: getRandomImageUrl(3),
+        fallbackImage: getPlaceholderImageUrl(3, "beach"),
         title: "Beach Paradise Escape",
         description:
           "Relax on pristine sandy beaches with turquoise waters. The ideal destination for beach lovers and water sports enthusiasts.",
@@ -281,6 +373,8 @@ export default function Vacation() {
         isAvailable: true,
       },
     ];
+
+    return defaultPackages;
   }
 
   const categories = [
@@ -317,7 +411,7 @@ export default function Vacation() {
     },
   ];
 
-  // 修改过滤逻辑
+  // Filter packages based on selected criteria
   const filteredPackages = packages.filter((pkg) => {
     if (selectedCategory !== "all" && pkg.category !== selectedCategory) {
       return false;
@@ -333,7 +427,7 @@ export default function Vacation() {
   });
 
   return (
-    <div>
+    <div className="vacation-page">
       <Head>
         <title>Vacation Packages - World Travel</title>
         <meta
@@ -413,7 +507,7 @@ export default function Vacation() {
                       Filter Packages
                     </h5>
 
-                    {/* Categories */}
+                    {/* Categories Filter */}
                     <div className="mb-4">
                       <h6 className="fw-semibold mb-3">Categories</h6>
                       <div className="d-flex flex-column gap-2">
@@ -477,7 +571,7 @@ export default function Vacation() {
                       </div>
                     </div>
 
-                    {/* Price Range */}
+                    {/* Price Range Slider */}
                     <div className="mb-4">
                       <h6 className="fw-semibold mb-3">
                         Price Range: ${filteredPrice[0]} - ${filteredPrice[1]}
@@ -516,7 +610,7 @@ export default function Vacation() {
                       </div>
                     </div>
 
-                    {/* Database Info */}
+                    {/* Database Information Panel */}
                     <div className="bg-info bg-opacity-10 p-3 rounded">
                       <h6 className="fw-semibold mb-2">
                         <i className="bi bi-database me-2"></i>
@@ -548,7 +642,7 @@ export default function Vacation() {
 
               {/* Packages Grid */}
               <div className="col-lg-9">
-                {/* Header */}
+                {/* Grid Header */}
                 <div className="d-flex justify-content-between align-items-center mb-4">
                   <div>
                     <h3 className="fw-bold mb-1">Database Packages</h3>
@@ -568,7 +662,7 @@ export default function Vacation() {
                   </div>
                 </div>
 
-                {/* Packages Grid */}
+                {/* Packages Grid Content */}
                 {filteredPackages.length > 0 ? (
                   <div className="row g-4">
                     {filteredPackages.map((pkg) => (
@@ -579,16 +673,17 @@ export default function Vacation() {
                             className="position-relative overflow-hidden"
                             style={{ height: "250px" }}
                           >
-                            <div
-                              className="h-100 w-100"
-                              style={{
-                                backgroundImage: `url(${pkg.image})`,
-                                backgroundSize: "cover",
-                                backgroundPosition: "center",
-                              }}
+                            <img
+                              src={pkg.image}
+                              alt={pkg.title}
+                              className="h-100 w-100 object-fit-cover"
+                              onError={(e) => handleImageError(e, pkg)}
+                              loading="lazy"
+                              crossOrigin="anonymous"
+                              referrerPolicy="no-referrer"
                             />
 
-                            {/* Tags */}
+                            {/* Status Tags */}
                             <div className="position-absolute top-0 start-0 p-3">
                               {pkg.isExpired ? (
                                 <span className="badge bg-secondary text-white fw-medium px-3 py-2">
@@ -616,7 +711,7 @@ export default function Vacation() {
                               </div>
                             )}
 
-                            {/* Rating */}
+                            {/* Rating Badge */}
                             <div className="position-absolute bottom-0 start-0 p-3">
                               <span className="badge bg-dark bg-opacity-75 text-white px-3 py-2">
                                 <i className="bi bi-star-fill text-warning me-1"></i>
@@ -640,7 +735,7 @@ export default function Vacation() {
                               {pkg.description}
                             </p>
 
-                            {/* Database Info */}
+                            {/* Database Information */}
                             {pkg.dbData && (
                               <>
                                 <div className="mb-2 small text-info">
@@ -668,7 +763,7 @@ export default function Vacation() {
                               </>
                             )}
 
-                            {/* Features */}
+                            {/* Features List */}
                             <div className="mb-3">
                               {pkg.features
                                 .slice(0, 3)
@@ -683,7 +778,7 @@ export default function Vacation() {
                                 ))}
                             </div>
 
-                            {/* Price & Button */}
+                            {/* Price and Booking Button */}
                             <div className="d-flex justify-content-between align-items-center pt-3 border-top">
                               <div>
                                 <div className="d-flex align-items-baseline">
@@ -770,7 +865,7 @@ export default function Vacation() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Call-to-Action Section */}
       <section
         className="py-5 bg-gradient text-white"
         style={{
@@ -798,84 +893,6 @@ export default function Vacation() {
       </section>
 
       <Footer />
-
-      <style jsx>{`
-        .vacation-hero {
-          min-height: 70vh;
-          background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5)),
-            url("/images/view1.avif");
-          background-size: cover;
-          background-position: center;
-          background-attachment: fixed;
-          padding: 100px 0 50px;
-        }
-
-        .hero-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(102, 126, 234, 0.3),
-            rgba(118, 75, 162, 0.3)
-          );
-          z-index: 0;
-        }
-
-        .vacation-hero .container {
-          position: relative;
-          z-index: 1;
-        }
-
-        .min-vh-70 {
-          min-height: 70vh;
-        }
-
-        .package-card {
-          transition: all 0.3s ease;
-          border-radius: 16px;
-          overflow: hidden;
-        }
-
-        .package-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
-        }
-
-        .hover-lift {
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .hover-lift:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-gradient {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          color: white;
-          transition: all 0.3s ease;
-        }
-
-        .btn-gradient:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        @media (max-width: 768px) {
-          .vacation-hero {
-            min-height: 50vh;
-            padding: 80px 0 30px;
-          }
-
-          .vacation-hero h1 {
-            font-size: 2.5rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }

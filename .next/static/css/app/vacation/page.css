@@ -413,3 +413,266 @@ button {
   background: var(--primary-dark);
 }
 
+/*!**********************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[12].oneOf[12].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[12].oneOf[12].use[3]!./app/vacation/package.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************/
+/* 
+ * Vacation Packages Page Styles
+ * Separate CSS file for better organization
+ */
+
+/* Hero Section Styles */
+.vacation-hero {
+  min-height: 70vh;
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5)),
+    url("/images/view1.avif");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  padding: 100px 0 50px;
+}
+
+/* Hero overlay gradient effect */
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.3),
+    rgba(118, 75, 162, 0.3)
+  );
+  z-index: 0;
+}
+
+/* Ensure content appears above overlay */
+.vacation-hero .container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Utility class for minimum height */
+.min-vh-70 {
+  min-height: 70vh;
+}
+
+/* Package Card Styles */
+.package-card {
+  transition: all 0.3s ease;
+  border-radius: 16px;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Card hover effect */
+.package-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* General hover lift effect */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradient button styles */
+.btn-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Image object-fit utility */
+.object-fit-cover {
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Package image loading animation */
+.package-card img {
+  transition: opacity 0.3s ease;
+}
+
+.package-card img.loading {
+  opacity: 0.7;
+}
+
+/* Filter sidebar styles */
+.filter-sidebar .card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Price range slider customization */
+.form-range::-webkit-slider-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.form-range::-moz-range-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Category button hover effects */
+.btn-outline-secondary:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  border-color: #667eea;
+}
+
+/* Status badge animations */
+.badge {
+  transition: all 0.2s ease;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* Gradient background for CTA section */
+.bg-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add subtle pattern overlay to CTA */
+.bg-gradient::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+/* Ensure CTA content is above pattern */
+.bg-gradient .container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .vacation-hero {
+    min-height: 50vh;
+    padding: 80px 0 30px;
+    background-attachment: scroll;
+  }
+
+  .vacation-hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .package-card {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Stack filter sidebar on mobile */
+  .filter-sidebar {
+    margin-bottom: 2rem;
+  }
+
+  /* Adjust card layout on mobile */
+  .package-card .card-body {
+    padding: 1.25rem;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 992px) {
+  .package-card {
+    margin-bottom: 1.5rem;
+  }
+
+  .vacation-hero h1 {
+    font-size: 3rem;
+  }
+}
+
+/* Loading animation for images */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.image-loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* Custom scrollbar for filter section */
+.filter-sidebar .card-body {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.filter-sidebar .card-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-sidebar .card-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.filter-sidebar .card-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+
+/* Fade-in animation for cards */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.package-card {
+  animation: fadeInUp 0.5s ease-out;
+  animation-fill-mode: both;
+}
+
+/* Stagger animation delay for cards */
+.package-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.package-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.package-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.package-card:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.package-card:nth-child(5) {
+  animation-delay: 0.5s;
+}
+.package-card:nth-child(6) {
+  animation-delay: 0.6s;
+}
+

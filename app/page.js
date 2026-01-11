@@ -13,7 +13,7 @@ export default function Home() {
   const featuredPackages = [
     {
       id: 1,
-      image: "/images/view1.avif",
+      image: "/images/view1.jpg",
       title: "Serene Forest Retreat",
       description:
         "Escape to lush green forests where towering trees create a natural canopy.",
@@ -24,7 +24,7 @@ export default function Home() {
     },
     {
       id: 2,
-      image: "/images/view2.avif",
+      image: "/images/view2.jpg",
       title: "Mountain Adventure",
       description:
         "Experience breathtaking mountain vistas with crisp air and stunning landscapes.",
@@ -35,7 +35,7 @@ export default function Home() {
     },
     {
       id: 3,
-      image: "/images/view3.avif",
+      image: "/images/view3.jpg",
       title: "Beach Paradise",
       description: "Relax on pristine sandy beaches with turquoise waters.",
       price: 1499,
