@@ -1,17 +1,17 @@
 // import { createPool } from "mysql2/promise";
-import { Pool } from "pg";
+// import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
+// const connectionString = process.env.DATABASE_URL;
 
-const pool = new Pool({
-  connectionString: connectionString,
-  ssl:
-    connectionString && connectionString.includes("supabase.co")
-      ? { rejectUnauthorized: false }
-      : false,
-});
+// const pool = new Pool({
+//   connectionString: connectionString,
+//   ssl:
+//     connectionString && connectionString.includes("supabase.co")
+//       ? { rejectUnauthorized: false }
+//       : false,
+// });
 
-export default pool;
+// export default pool;
 
 // export default pool;
 // const pool = createPool({
